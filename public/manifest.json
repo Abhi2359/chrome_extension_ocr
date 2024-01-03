@@ -1,0 +1,21 @@
+{
+    "manifest_version": 3,
+    "name": "Image to text OCR",
+    "version": "1.0.1",
+    "icons": {
+        "32": "images/extension-cord.png"
+    },
+   
+    "action": {
+       "default_popup":"index.html"
+    },
+    "permissions": [
+        "scripting",
+        "activeTab",
+        "downloads"
+    ],
+    "host_permissions": [
+        "http://*/*",
+        "https://*/*"
+    ]
+  }
