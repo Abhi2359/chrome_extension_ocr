@@ -1,106 +1,72 @@
-import { useCallback, useEffect, useState } from 'react';
-import { createWorker } from 'tesseract.js';
-import {
-  Box,
-  Button,
-  ChakraProvider,
-  FormControl,
-  FormLabel,
-  Input,
-  VStack,
-  Image,
-} from '@chakra-ui/react';
 
-const App = () => {
-  const [selectedImage, setSelectedImage] = useState(null);
-  const [screenshotImage, setScreenshotImage] = useState(null);
-  const [textResult, setTextResult] = useState("");
+import React, { useState } from 'react';
+import Tesseract from 'tesseract.js';
+import { Button, Input, Box, Image, Text } from '@chakra-ui/react';
+import CaptureButton from './CaptureButton';
 
-  const worker = createWorker();
+function App() {
+  const [capturedImage, setCapturedImage] = useState(null);
+  const [uploadedImage, setUploadedImage] = useState(null);
+  const [convertedText, setConvertedText] = useState(null);
 
-  const convertImageToText = useCallback(async () => {
-    if (!selectedImage) return;
-    await worker.load();
-    await worker.loadLanguage("eng");
-    await worker.initialize("eng");
-    const { data } = await worker.recognize(selectedImage);
-    setTextResult(data.text);
-  }, [worker, selectedImage]);
-
-  useEffect(() => {
-    convertImageToText();
-  }, [selectedImage, convertImageToText]);
-
-  const handleScreenshot = () => {
-    chrome.tabs.captureVisibleTab(null, {}, async (screenshotUrl) => {
-      console.log(screenshotUrl);
-
-      //Save the screenshot to the user's downloads
-      chrome.downloads.download({
-        url: screenshotUrl,
-        filename: 'screenshot.png',
-        saveAs: false,
-      });
-
-      setScreenshotImage(screenshotUrl);
-      setSelectedImage(screenshotUrl);
+  const captureScreen = () => {
+    chrome.tabs.captureVisibleTab({ format: 'png' }, (dataUrl) => {
+      setCapturedImage(dataUrl);
     });
   };
 
-  const handleChangeImage = (e) => {
-    if (e.target.files[0]) {
-      setSelectedImage(URL.createObjectURL(e.target.files[0]));
-      setScreenshotImage(null);
-    } else {
-      setSelectedImage(null);
-      setTextResult("");
-      setScreenshotImage(null);
+  const handleUpload = () => {
+    setUploadedImage(capturedImage);
+  };
+
+  const handleConvertToText = () => {
+    if (uploadedImage) {
+      Tesseract.recognize(
+        uploadedImage,
+        'eng',
+        { logger: (info) => console.log(info) }
+      ).then(({ data: { text } }) => {
+        setConvertedText(text);
+      });
     }
   };
 
   return (
-    
-      <VStack spacing={4} align="center" p={4} bg="gray.100" borderRadius="md">
-        <Box>
-          <h1 color="teal.500">Image To Text</h1>
-          
+    <Box width="300px" textAlign="center" p="4">
+      <CaptureButton onClick={captureScreen} />
+      {capturedImage && (
+        <Box mt="4">
+          <Text>Captured Image:</Text>
+          <Image src={capturedImage} alt="Captured Screen" maxW="100%" />
         </Box>
-        <Box>
-          <FormControl>
-            <FormLabel color="teal.500">Screenshot or Upload Image</FormLabel>
-            <Input type="file" onChange={handleChangeImage} />
-          </FormControl>
+      )}
+      {uploadedImage && (
+        <Box mt="4">
+          <Text>Uploaded Image:</Text>
+          <Image src={uploadedImage} alt="Uploaded Image" maxW="100%" />
         </Box>
-        <Box>
-          {(screenshotImage || selectedImage) && (
-            <Image
-              src={screenshotImage || URL.createObjectURL(selectedImage)}
-              alt="thumb"
-              boxSize="300px"
-              objectFit="cover"
-              borderRadius="md"
-            />
-          )}
+      )}
+      {capturedImage && (
+        <Box mt="4">
+          <Text>Upload Image:</Text>
+          <Input type="text" value={uploadedImage || ''} readOnly my="2" />
+          <Button onClick={handleUpload}>Upload</Button>
         </Box>
-        <Box>
-          <Button
-            colorScheme="teal"
-            onClick={handleScreenshot}
-            _hover={{ bg: 'teal.600' }}
-          >
-            Capture Screenshot
-          </Button>
+      )}
+      {uploadedImage && (
+        <Box mt="4">
+          <Text>Convert to Text:</Text>
+          <Button onClick={handleConvertToText}>Convert to Text</Button>
         </Box>
-        <Box>
-          {textResult && (
-            <Box>
-              <p color="teal.500">{textResult}</p>
-            </Box>
-          )}
+      )}
+      {convertedText && (
+        <Box mt="4">
+          <Text>Converted Text:</Text>
+          <Text>{convertedText}</Text>
         </Box>
-      </VStack>
-    
+      )}
+    </Box>
   );
-};
+}
 
 export default App;
